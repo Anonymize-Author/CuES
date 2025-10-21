@@ -1,5 +1,3 @@
-# AgentFlow (CUES)
-
 A lightweight, modular pipeline for three-stage agent data generation:
 - Stage 1: Triplet generation (environment exploration)
 - Stage 2: Task abstraction (derive tasks and queries)
@@ -95,6 +93,3 @@ Outputs are written to `./data/`:
 - EnvService import errors: ensure EnvService is available in PYTHONPATH or run from the repo root where EnvService exists.
 - Missing API key: set `api.dashscope_api_key` in `config.yaml` or environment variable.
 - Empty outputs: check logs in `./logs/agentflow.log` and lower thresholds.
-
-## License
-Apache-2.0 (adjust if needed)
