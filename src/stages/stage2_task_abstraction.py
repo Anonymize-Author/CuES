@@ -1,4 +1,3 @@
-# filepath: /mnt/data/CPFS_EXTEND/maixinji/AgentFlow/src/stages/stage2_task_abstraction.py
 """
 Stage 2: Abstract tasks from triplets
 Derive concrete task goals and queries from the agent interaction triplet sequence
