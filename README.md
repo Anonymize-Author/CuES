@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="figs/cues.pdf" alt="CuES Logo" width="180">
+  <img src="figs/cues.png" alt="CuES Logo" width="180">
 </p>
 
 ---
@@ -31,6 +31,10 @@ This repository implements a **lightweight three-stage pipeline** that closely f
 - **Optional: Query Rewrite，Requirement Confirm**  
 
 CuES is evaluated on **AppWorld**, **WebShop**, and **BFCL v3 Multi-Turn Base**, and the synthesized data is shown in the paper to match or surpass original datasets in terms of **diversity, executability, and downstream RL performance**.
+
+<p align="center">
+  <img src="figs/visual.png" alt="CuES Logo" width="180">
+</p>
 
 ---
 
