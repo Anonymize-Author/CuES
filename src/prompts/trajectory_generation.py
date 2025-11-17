@@ -3,14 +3,43 @@ Prompts for trajectory generation
 """
 
 
+def _build_action_format(env_type: str) -> str:
+    env = (env_type or "").lower()
+    if env == "bfcl":
+        return (
+            "<action>\n"
+            "<tool_call>\n"
+            "{\n"
+            "    \"id\": \"unique_call_id\",\n"
+            "    \"name\": \"tool_function_name\",\n"
+            "    \"arguments\": \"{\\\"param1\\\": \\\"value1\\\"}\",\n"
+            "    \"type\": \"tool\",\n"
+            "    \"index\": 0\n"
+            "}\n"
+            "</tool_call>\n"
+            "</action>\n"
+        )
+    if env == "appworld":
+        return (
+            "Enclose the action within <action>```python\n \n```</action> tags. Such as <action>```python\nprint('hello appworld!!')\n```</action>. Every response must contain a valid action enclosed in these tags.\n"
+        )
+    # default: webshop
+    return (
+        "<action>\n"
+        "\\boxed{search[machine wash men's dress shirts]}\n"
+        "\\boxed{click[machine wash men's dress shirts]}\n"
+        "</action>\n"
+    )
+
 class TrajectoryPrompts:
     """Prompt templates for trajectory generation"""
     
     def simple_action_prompt(self, env_discription: str, task_description: str,
-                           query: str, action_history: list, ground_truth: str) -> list:
+                           query: str, action_history: list, ground_truth: str, env_type: str = "webshop") -> list:
         """Simple strategy action prompt"""
         
         history_text = "\n".join([f"- {action}" for action in action_history[-3:]])  # Last 3 actions
+        action_format = _build_action_format(env_type)
         
         messages = [
             {
@@ -43,12 +72,9 @@ Please Observe the current environment state and identify the available APIs.
 Analyze the available actions and provide the next action to take. 
 
 The output format of the tool call should contain <tool_call> and </tool_call> and should not contain ```json and ``` blocks. Follow the format:
-"""
-"""
-<action>
-\\boxed{click[something]} 
-\\boxed{search[something]}
-</action>
+
+# Action Format (must follow):
+{action_format}
 
 Every response must contain a valid action enclosed in these tags.
 
@@ -67,6 +93,8 @@ When you think all the task is complete and do not need any action, you should o
 # To use any tool, respond with a JSON object containing, and finally return the action in the following format:
 # """
 # """
+
+##bfcl
 # <action>
 # <tool_call>
 # {
@@ -79,11 +107,13 @@ When you think all the task is complete and do not need any action, you should o
 # </tool_call>
 # </action>
 
+##webshop
 # <action>
 # \\boxed{click[something]} 
 # \\boxed{search[something]}
 # </action>
 
+##appworld
 # Enclose the action within <action>```python\n \n```</action> tags. Such as <action>```python\nprint('hello appworld!!')\n```</action>. Every response must contain a valid action enclosed in these tags.
 
         return messages

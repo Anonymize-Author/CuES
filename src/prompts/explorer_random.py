@@ -1,8 +1,43 @@
 """
 Stage 1: Agent-environment interaction to generate triplet data
+Dynamically builds the Action Format section according to env_type: webshop | bfcl | appworld
 """
 
-AGENT_INTERACTION_SYSTEM_PROMPT = """
+def _build_action_format(env_type: str) -> str:
+    env = (env_type or "").lower()
+    if env == "bfcl":
+        return (
+            "To use any tool, respond with a JSON object and finally return the action in the following format:\n\n"
+            "<action>\n"
+            "<tool_call>\n"
+            "{\n"
+            "    \"id\": \"unique_call_id\",\n"
+            "    \"name\": \"tool_function_name\",\n"
+            "    \"arguments\": \"{\\\"param1\\\": \\\"value1\\\"}\",\n"
+            "    \"type\": \"tool\",\n"
+            "    \"index\": 0\n"
+            "}\n"
+            "</tool_call>\n"
+            "</action>\n"
+        )
+    if env == "appworld":
+        return (
+            "Enclose the action within <action>```python\\n \\n+```</action> tags.\n"
+            "For example: <action>```python\\nprint('hello appworld!!')\\n```</action>.\n"
+            "Every response must contain a valid action enclosed in these tags.\n"
+        )
+    # default: webshop
+    return (
+        "To use any tool, respond with an action in the following format:\n\n"
+        "<action>\n"
+        "\\boxed{search[machine wash men's dress shirts]}\n"
+        "\\boxed{click[machine wash men's dress shirts]}\n"
+        "</action>\n"
+    )
+
+
+def build_agent_interaction_system_prompt(env_type: str) -> str:
+    return f"""
 You are an environment explorer with a deep curiosity about the world around you. This is your first time in this world, and you are particularly concerned about some operations that may be useful to you in the future. While interacting with the user, your primary interest lies in exploring the environment freely. You focus on discovering and executing actions within the allowed set of options provided. Your goal is to explore actions that adhere to the task format but do not concern yourself with the outcome.
 
 ## Your task:
@@ -19,11 +54,7 @@ Ensure the chosen action is within the user-defined set of actions.
 
 # Action Format:
 
-To use any tool, respond with a JSON object containing, and finally return the action in the following format:
-<action>
-\\boxed{search[machine wash men's dress shirts]}
-\\boxed{click[machine wash men's dress shirts]}
-</action>
+{_build_action_format(env_type)}
 
 ## Instructions:
 
@@ -42,6 +73,7 @@ Always include a valid action and action tags in your reply.
 First enter your reason, then enter your action.
 """
 
+##bfcl
 # To use any tool, respond with a JSON object containing, and finally return the action in the following format:
 
 # <action>
@@ -56,10 +88,10 @@ First enter your reason, then enter your action.
 # </tool_call>
 # </action>
 
-
+##appworld
 # Enclose the action within <action>```python\n \n```</action> tags. Such as <action>```python\nprint('hello appworld!!')\n```</action>. Every response must contain a valid action enclosed in these tags.
 
-
+##webshop
 # To use any tool, respond with a JSON object containing, and finally return the action in the following format:
 # <action>
 # \\boxed{search[machine wash men's dress shirts]}
@@ -84,10 +116,11 @@ def parse_action_from_response(response: str) -> str:
         return "look around"
 
 def get_agent_interaction_prompt(
-    initial_obs: str, 
-    history: list = None, 
+    initial_obs: str,
+    history: list = None,
     exploration_memory: str = None,
-    exploration_requirement: str = "You are completely free to explore the environment. You should prioritize trying new and untried actions. "
+    exploration_requirement: str = "You are completely free to explore the environment. You should prioritize trying new and untried actions. ",
+    env_type: str = "webshop",
 ) -> tuple:
     """Build the full prompt for agent interaction, including exploration memory and user requirements"""
     
@@ -136,5 +169,6 @@ Based on this memory, try to explore new areas and avoid repeating actions that 
 Please select an appropriate action based on the current environment state, exploration memory, historical information, and any specified exploration requirements. Focus on exploring new areas or actions that haven't been thoroughly tested yet.
 """
     
-    return AGENT_INTERACTION_SYSTEM_PROMPT, user_prompt
+    system_prompt = build_agent_interaction_system_prompt(env_type)
+    return system_prompt, user_prompt
 

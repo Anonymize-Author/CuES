@@ -70,7 +70,8 @@ class Stage2TaskAbstraction:
         """Create environment"""
         try:
             envservice_config = self.env_config.get('envservice', {})
-            server_url = envservice_config.get('server_url', 'http://localhost:8000')
+            # Align default with config.yaml (8080) and allow override via config
+            server_url = envservice_config.get('server_url', 'http://localhost:8080')
             env_type = envservice_config.get('env_type', 'appworld')
             
             
@@ -143,7 +144,9 @@ class Stage2TaskAbstraction:
                 exploration_memory = None
 
             # Build prompts for task abstraction
-            system_prompt, user_prompt = get_task_extraction_prompt(triplet_dicts, exploration_memory, env_discription)
+            # Determine environment type for prompt formatting
+            env_type_for_prompt = self.env_config.get('envservice', {}).get('env_type') or self.env_config.get('type', 'webshop')
+            system_prompt, user_prompt = get_task_extraction_prompt(triplet_dicts, exploration_memory, env_discription, env_type=env_type_for_prompt)
             
             messages = [
                 {"role": "system", "content": system_prompt},

@@ -11,9 +11,10 @@ logger = get_logger(__name__)
 class TrajectoryEvaluator:
     """Evaluate trajectory success using LLM"""
     
-    def __init__(self, client):
+    def __init__(self, client, env_type: str = "webshop"):
         self.client = client
         self.prompts = EvaluationPrompts()
+        self.env_type = env_type
     
     def evaluate_trajectory_success(self, steps: List, task_description: str, query: str,
                                   ground_truth: str, final_observation: str) -> bool:
@@ -28,7 +29,8 @@ class TrajectoryEvaluator:
                 query=query,
                 ground_truth=ground_truth,
                 trajectory_summary=trajectory_summary,
-                final_observation=final_observation
+                final_observation=final_observation,
+                env_type=self.env_type,
             )
             
             # Get LLM evaluation
@@ -87,7 +89,8 @@ class TrajectoryEvaluator:
             prompt = self.prompts.step_completion_prompt(
                 task_description=task_description,
                 query=query or "",
-                observation=observation
+                observation=observation,
+                env_type=self.env_type,
             )
             
             # Get LLM evaluation

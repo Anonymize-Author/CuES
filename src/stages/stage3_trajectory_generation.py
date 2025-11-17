@@ -52,22 +52,26 @@ class Trajectory:
 
 class Stage3TrajectoryGeneration:
     """Stage 3: Generate trajectories from tasks"""
-    
+
     def __init__(self, client, env_config: Dict[str, Any], **kwargs):
         self.client = client
         self.env_config = env_config
         self.max_steps = kwargs.get('max_steps_per_trajectory', kwargs.get('max_steps', 20))
-        
-        # Initialize other components
-        self.llm_agent = LLMAgent(client)
-        self.evaluator = TrajectoryEvaluator(client)
+
+        # Determine env_type from config (envservice.env_type preferred, fallback to environment.type)
+        env_type = env_config.get('envservice', {}).get('env_type') or env_config.get('type', 'webshop')
+        self.env_type = env_type
+
+            # Initialize other components
+        self.llm_agent = LLMAgent(client, env_type=env_type)
+        self.evaluator = TrajectoryEvaluator(client, env_type=env_type)
         self.storage = DataStorage(kwargs.get('data_dir', './data'))
-        
+
         # Ensure output directories exist
         self.output_dir = Path("data/trajectories")
         self.trajectories_dir = self.output_dir
         self.failed_dir = self.output_dir / "failed_tasks"
-        
+
         for dir_path in [self.output_dir, self.trajectories_dir, self.failed_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
     

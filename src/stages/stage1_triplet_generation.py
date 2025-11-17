@@ -156,6 +156,15 @@ class Stage1TripletGeneration:
         env.close()
         
         logger.info(f"Finished rollout, generated {len(triplets)} triplets")
+        # After persisting triplets, refresh and persist exploration memory for this env
+        try:
+            if self.memory_manager and env_id:
+                # Invalidate cache so new triplets are considered
+                self.memory_manager.invalidate_env_cache(env_id)
+                # Recompute and persist memory summary to data_dir/memories/
+                _ = self.memory_manager.get_env_exploration_memory(env_id)
+        except Exception as e:
+            logger.warning(f"Post-rollout memory update failed for env {env_id}: {e}")
         return triplets
     
     def _create_environment(self):
@@ -194,11 +203,14 @@ class Stage1TripletGeneration:
     def _get_agent_action(self, initial_obs: str, history: List[str], exploration_memory: str = None) -> str:
         """Get agent action (including exploration memory and requirement)"""
         try:
+            # Determine environment type
+            env_type = self.env_config.get('envservice', {}).get('env_type') or self.env_config.get('type', 'appworld')
             system_prompt, user_prompt = get_agent_interaction_prompt(
                 initial_obs, 
                 history, 
                 exploration_memory,
-                self.exploration_requirement  # Add exploration requirement
+                self.exploration_requirement,  # Add exploration requirement
+                env_type=env_type,
             )
             
             messages = [

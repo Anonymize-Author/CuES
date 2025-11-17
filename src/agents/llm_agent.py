@@ -13,8 +13,9 @@ logger = get_logger(__name__)
 class LLMAgent:
     """LLM-based agent for environment interaction"""
     
-    def __init__(self, client):
+    def __init__(self, client, env_type: str = "webshop"):
         self.client = client
+        self.env_type = env_type
         self.prompts = TrajectoryPrompts()
     
     def get_next_action(self, env_discription: str, task_description: str, 
@@ -26,7 +27,8 @@ class LLMAgent:
                 task_description=task_description,
                 query=query,
                 action_history=history,
-                ground_truth=ground_truth
+                ground_truth=ground_truth,
+                env_type=self.env_type,
             )
             
             response = self.client.chat_with_retry(prompt)

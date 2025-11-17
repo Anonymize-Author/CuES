@@ -98,6 +98,7 @@ class AgentFlowPipeline:
         - Output: exactly the same JSON structure as Stage 3 outputs (per-file JSON, same keys, only replacing `query`)
         - Method: use messages context in each trajectory to rewrite the original query into semantically equivalent variants
         """
+
         import json
         import time
         from datetime import datetime
@@ -294,36 +295,51 @@ class AgentFlowPipeline:
         import ast
 
         llmclient = self.client
-        envclient = EnvClient(base_url=self.config.get('env_service_url', 'http://localhost:8080'))
 
-        env_type = "webshop"
+        # Read EnvService settings from config instead of hardcoding
+        env_cfg = self.config.get('environment', {}).get('envservice', {})
+        server_url = env_cfg.get('server_url', 'http://localhost:8080')
+        env_type = env_cfg.get('env_type', self.config.get('environment', {}).get('type', 'webshop'))
+        create_params = env_cfg.get('create_params', {})  # optional extra params
+
+        envclient = EnvClient(server_url)
+
+        # Get task IDs and shuffle
         task_ids = envclient.get_env_profile(env_type, split='train')
         import random
-        random.shuffle(task_ids)  # Randomly shuffle task order
+        random.shuffle(task_ids)
 
         # Use multithreading to get the query for each task
         def get_query(task_id):
-            init_response = envclient.create_instance(
-                env_type,
-                task_id,
-                params={
-                    'base_url': 'http://127.0.0.1:1907',
-                    'human_goals': False,
-                }
-            )
-            instance_id = init_response["info"]["instance_id"]
-            query = init_response["state"][-1].get('content', '').replace('WebShop\nInstruction: \n', '').strip()
-            # print("query:",query)
-            envclient.release_instance(instance_id)
-            return str(query)
+            try:
+                init_response = envclient.create_instance(
+                    env_type,
+                    task_id,
+                    params=create_params,
+                )
+                instance_id = init_response["info"]["instance_id"]
+                query = (
+                    init_response["state"][-1]
+                    .get('content', '')
+                    .replace('WebShop\nInstruction: \n', '')
+                    .strip()
+                )
+                envclient.release_instance(instance_id)
+                return str(query)
+            except Exception as e:
+                logger.warning(f"extract_concept: failed to fetch query for task {task_id}: {e}")
+                return ""
 
         queries = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_id = {executor.submit(get_query, tid): tid for tid in task_ids[:query_count]}  # Limit to 60 tasks
+            future_to_id = {executor.submit(get_query, tid): tid for tid in task_ids[:query_count]}
             for future in as_completed(future_to_id):
-                query = future.result()
-                if query:
-                    queries.append(query)
+                try:
+                    query = future.result()
+                    if query:
+                        queries.append(query)
+                except Exception as e:
+                    logger.warning(f"extract_concept: future failed: {e}")
 
         # Batch them into LLM by batch_size
         batches = [queries[i:i + batch_size] for i in range(0, len(queries), batch_size)]
@@ -345,7 +361,7 @@ class AgentFlowPipeline:
             except Exception:
                 # Support comma or newline separation
                 import re
-                concepts = [x.strip() for x in re.split(r'[,\n]', response) if x.strip()]
+                concepts = [x.strip() for x in re.split(r'[\,\n]', response) if x.strip()]
             return concepts
 
         all_concepts = set()
@@ -418,7 +434,7 @@ class AgentFlowPipeline:
         if stage3_results:
             stats.update(stage3_results.get('statistics', {}))
         
-        print("AgentFlow pipeline execution completed")
+        print("AgentFlow Core pipeline execution completed")
         
         result = {
             'success': True,
@@ -875,10 +891,9 @@ class AgentFlowPipeline:
                 if error:
                     results["failed_tasks"].append(task_dict)
                     results["statistics"]["failed"] += 1
-                    # Save failed task
+                    # Save failed task metadata instead of trying to save a non-existent trajectory
                     stage3_instance = create_stage3_instance()
-                    # stage3_instance._save_failed_task(task_dict, f"exception: {error}")
-                    stage3_instance._save_trajectory(trajectory, failed=True)
+                    stage3_instance._save_failed_task(task_dict, f"exception: {error}")
                 elif trajectory and trajectory.success:
                     results["successful_trajectories"].append(trajectory)
                     results["statistics"]["successful"] += 1
