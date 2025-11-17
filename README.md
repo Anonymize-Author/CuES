@@ -1,15 +1,67 @@
-A lightweight, modular pipeline for three-stage agent data generation:
-- Stage 1: Triplet generation (environment exploration)
-- Stage 2: Task abstraction (derive tasks and queries)
-- Stage 3: Trajectory generation (execute tasks and record messages)
-- Optional: Query Rewrite (rewrite queries using Stage 3 trajectory context)
+<p align="center">
+  Official codebase for <b>“CuES: Bottom-Up Exploration and Top-Down Guidance for Agentic Data Synthesis” (ICLR 2026 under review)</b>.
+</p>
 
-## Features
-- Pluggable environment managers (AppWorld, BFCL, WebShop via EnvService)
-- Persistent storage with per-stage outputs
-- Threaded execution for higher throughput
-- Deterministic JSON schemas per stage
-- Query Rewrite to mirror Stage 3 JSON and diversify training data
+<p align="center">
+  <img src="figs/cues.pdf" alt="CuES Logo" width="180">
+</p>
+
+---
+
+## 🔍 Overview
+
+CuES is a **curiosity-driven, environment-grounded framework** for synthesizing high-quality agentic data **without predefined seed queries**.
+
+Conceptually, CuES unfolds in **five coordinated stages** (as in the paper):
+
+1. **Requirement Confirmation** – derive guiding principles and a concept pool from environment description, optional user requirement, and (optional) seed queries.  
+2. **Curious Exploration** – explore the environment bottom-up using an Explorer Agent guided by a memory tree and concept pool.  
+3. **Task Abstraction** – lift consecutive low-level interaction triplets into executable natural-language tasks with guidelines.  
+4. **Quality Control** – re-execute and judge each candidate task to ensure executability and path faithfulness.  
+5. **Query Rewrite** – progressively expose guideline hints in the query text to control difficulty and diversify task formulations.
+
+This repository implements a **lightweight three-stage pipeline** that closely follows the above design:
+
+- **Stage 1: Triplet Generation (Curious Exploration)**  
+  Curiosity-guided rollout in the environment, storing triplets `(state, action, observation)` and environment memory.
+- **Stage 2: Task Abstraction**  
+  Derive natural-language tasks (queries) and guidelines from exploration trajectories.
+- **Stage 3: Trajectory Generation (Quality-Controlled Execution)**  
+  Execute synthesized tasks with an agent, record complete trajectories, and attach success/failure metadata.
+- **Optional: Query Rewrite，Requirement Confirm**  
+
+CuES is evaluated on **AppWorld**, **WebShop**, and **BFCL v3 Multi-Turn Base**, and the synthesized data is shown in the paper to match or surpass original datasets in terms of **diversity, executability, and downstream RL performance**.
+
+---
+
+## ✨ Features
+
+- **Environment-grounded synthesis**  
+  Tasks originate from executed trajectories, ensuring **feasibility by construction**.
+- **Curiosity + top-down guidance**  
+  Concept pool and principles guide exploration toward salient regions without prescribing exact tasks.
+- **Environment memory tree**  
+  Encourages novel actions and reduces redundant loops during exploration.
+- **Query-free or limited-query setting**  
+  Operates without manual seed tasks; optional seeds only refine the concept pool.
+- **Multi-environment support**  
+  Designed for AppWorld, WebShop, and BFCL v3 Multi-Turn Base via EnvService.
+- **Deterministic JSON schemas per stage**  
+  Stable data interfaces across Stage 1/2/3 and Query Rewrite.
+- **Config-driven pipeline**  
+  All behavior controlled through `config/config.yaml`.
+
+---
+
+## ⚙️ Requirements
+
+- Python **3.10+**
+- Access to **Aliyun DashScope API**
+- (Optional) **EnvService** if using external interactive environments (AppWorld / BFCL / WebShop)
+
+---
+
+## 📥 Installation
 
 ## Quickstart
 
@@ -19,12 +71,17 @@ A lightweight, modular pipeline for three-stage agent data generation:
 - EnvService if using external simulated environments (AppWorld/BFCL/WebShop)
 
 2) Installation
-- Create and activate a virtual environment
-- Install dependencies (adapt to your environment):
-  - pip install -r requirements.txt (if provided)
-  - or pip install pyyaml requests
-- Export your DashScope key:
-  - export DASHSCOPE_API_KEY=... (or set in config.yaml)
+
+```python
+# Create and activate a virtual environment
+# Install dependencies (adapt to your environment)
+bash ./env_service/environments/appworld/setup.sh
+# Export your DashScope key:
+export DASHSCOPE_API_KEY=... (or set in config.yaml)
+conda activate appworld
+bash ./env_service/launch_script/appworld.sh
+python ./env_service/test_script/test_appworld.py
+```
 
 3) Configuration
 See `config/config.yaml` for full options. Key sections:
@@ -36,11 +93,18 @@ See `config/config.yaml` for full options. Key sections:
 - rewrite: Query Rewrite settings
 
 4) Run
-- All stages:  python main.py --stage all --config config/config.yaml
-- Stage 1:     python main.py --stage stage1
-- Stage 2:     python main.py --stage stage2 --input-file ./data/triplets/*.jsonl (latest auto-selected if omitted)
-- Stage 3:     python main.py --stage stage3 --input-file ./data/tasks/*.jsonl (latest auto-selected if omitted)
-- Enable rewrite after stage 3: add --rewrite (alias: --query-rewrite)
+```python
+# All stages:
+python main.py --stage all --config config/config.yaml
+# Stage 1:
+python main.py --stage stage1
+# Stage 2:
+python main.py --stage stage2 --input-file ./data/triplets/*.jsonl (latest auto-selected if omitted)
+# Stage 3:
+python main.py --stage stage3 --input-file ./data/tasks/*.jsonl (latest auto-selected if omitted)
+# Enable rewrite after stage 3: add --rewrite (alias: --query-rewrite)
+# Enable requirement confirm before stage 1: add --extract
+```
 
 Outputs are written to `./data/`:
 - data/triplets/*.jsonl
