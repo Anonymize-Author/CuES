@@ -49,6 +49,35 @@ Outputs are written to `./data/`:
 - data/trajectories/failed_tasks/*.json
 - data/rewrites/trajectories/trajectory_*_rw*.json
 
+## Run with EnvService (AppWorld)
+
+Use the bundled EnvService scripts to bring up the AppWorld environment, then run the pipeline:
+
+1) Prepare environment with conda
+- Ensure conda is installed and available in your shell:
+  - source $(conda info --base)/etc/profile.d/conda.sh
+
+2) Install AppWorld environment via setup script
+- cd env_service/environments/appworld
+- bash setup.sh
+
+3) Launch EnvService for AppWorld (in a separate terminal)
+- cd env_service/launch_script
+- bash appworld.sh
+
+4) Configure Client (optional)
+- In `config/config.yaml`, set:
+  - environment.type: appworld
+  - environment.envservice.server_url: http://127.0.0.1:8080
+
+5) Start synthesis
+- From the repo root (CuES/):
+  - python main.py --stage all --config config/config.yaml
+
+Notes
+- You can override `APPWORLD_ROOT` before launching to point to an existing AppWorld data directory.
+- If EnvService runs on another host/port, update `server_url` accordingly.
+
 ## CLI
 - --config: path to config file (default: config/config.yaml)
 - --stage: all | stage1 | stage2 | stage3

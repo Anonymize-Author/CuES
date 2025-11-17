@@ -32,25 +32,26 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
 
 def check_envservice_for_appworld(config):
-    """Check if EnvService is needed for AppWorld"""
+    """Probe EnvService if an EnvService-backed environment is selected (appworld/bfcl/webshop)."""
     env_type = config.get('environment', {}).get('type')
-    if env_type == 'appworld':
-        logger.info("Detected AppWorld environment, checking EnvService status...")
-        
+    if env_type in {'appworld', 'bfcl', 'webshop'}:
+        logger.info(f"Detected '{env_type}' environment, checking EnvService status...")
+
         import requests
-        server_url = config.get('environment', {}).get('envservice', {}).get('server_url', 'http://localhost:8000')
-        
+        server_url = config.get('environment', {}).get('envservice', {}).get('server_url', 'http://localhost:8080')
+
         try:
-            response = requests.get(server_url, timeout=2)
-            logger.info(f"✅ EnvService is running: {server_url}")
+            # A simple GET to the base URL is enough for a quick liveness probe
+            requests.get(server_url, timeout=2)
+            logger.info(f"✅ EnvService is reachable: {server_url}")
             return True
-        except:
-            logger.warning(f"⚠️  EnvService not running, please start manually:")
+        except Exception:
+            logger.warning("⚠️  EnvService not reachable. Please start it and ensure clients use an IP, not 0.0.0.0 or localhost across machines.")
             logger.warning(f"   cd {Path(__file__).parent / 'EnvService'}")
-            logger.warning(f"   python -m env.env_service")
-            logger.warning(f"   or run: python start_envservice.py")
+            logger.warning("   python -m env.env_service")
+            logger.warning("   or run: python start_envservice.py")
             return False
-    
+
     return True
 
 
@@ -140,6 +141,7 @@ def main():
             print(f"Exploration requirement: {args.requirement}")
         
         if args.extract:
+            print("=== Stage 0: Requirement Confirm ===")
             concepts = pipeline.extract_concept(query_count = 100, max_workers=config['threading']['max_workers'], batch_size = 10)
             print(f"Extracting concept sets: {concepts}")
             result = pipeline.run_full_pipeline(session_name=args.session_name, requirement=args.requirement, concepts=concepts)
@@ -168,6 +170,7 @@ def main():
                 logger.info(f"  Average trajectory length: {trajectory_stats.get('avg_length', 0):.1f}")
             
             if args.rewrite:
+                print("=== Stage 4: Query Rewrite ===")
                 rewrite_cfg = config.get('rewrite', {})
                 batch_size = rewrite_cfg.get('batch_size', 20)
                 num_variants = rewrite_cfg.get('num_variants', 3)
@@ -194,7 +197,7 @@ def main():
                 )
                 if rewrite_result.get('success'):
                     logger.info("📝 Query Rewrite finished.")
-                    logger.info(f"Rewritten samples: {rewrite_result.get('rewritten_count', 0)}")
+                    print(f"Rewritten samples: {rewrite_result.get('rewritten_count', 0)}")
                     logger.info(f"Rewrite output dir: {rewrite_result.get('output_dir')}")
                 else:
                     logger.error(f"❌ Query Rewrite failed: {rewrite_result.get('error')}")

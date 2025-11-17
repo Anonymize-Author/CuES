@@ -12,33 +12,33 @@ data_dir: "./data"
 
 # Environment configuration
 environment:
-  type: "webshop"  # Options: "appworld", "bfcl", "webshop"
-  
+  type: "appworld"  # Options: "appworld", "bfcl", "webshop"
+
   # EnvService configuration
   envservice:
-    server_url: "http://localhost:8080"
-    env_type: "webshop"  # Options: "appworld", "bfcl", "webshop"
+    env_type: "appworld"
+    server_url: "http://127.0.0.1:8080"
     timeout: 30
     max_steps: 40
 
 # Stage 1 configuration: triplet generation   
 stage1:
-  rollout_num: 100      # Number of rollouts
-  max_steps: 30         # Max steps per rollout
+  rollout_num: 4        # Small batch for quick validation
+  max_steps: 18         # Fewer steps per rollout
 
 # Stage 2 configuration: task abstraction
 stage2:
-  batch_size: 30        # Batch size
+  batch_size: 12        # Smaller batch size
   min_confidence: 0.7   # Minimum confidence threshold
 
 # Stage 3 configuration: trajectory generation
 stage3:
-  max_steps: 30         # Max steps per trajectory
-  retry_attempts: 2     # Retry attempts
+  max_steps: 14         # Fewer steps per trajectory for speed
+  retry_attempts: 1     # Retry attempts
 
 # Threading configuration
 threading:
-  max_workers: 50       # Maximum worker threads
+  max_workers: 6        # Lower concurrency for stability
   enabled: true         # Enable multithreading
 
 # Logging configuration
